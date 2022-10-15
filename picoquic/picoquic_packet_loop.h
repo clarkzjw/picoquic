@@ -84,6 +84,22 @@ int picoquic_packet_loop_win(picoquic_quic_t* quic,
     void* loop_callback_ctx);
 #endif
 
+int picoquic_packet_loop_reuse(picoquic_quic_t* quic,
+                         int local_port,
+                         int local_af,
+                         int dest_if,
+                         int socket_buffer_size,
+                         int do_not_use_gso,
+                         picoquic_packet_loop_cb_fn loop_callback,
+                         void * loop_callback_ctx,
+                         SOCKET_TYPE* s_socket,
+                         int* sock_af,
+                         uint16_t* sock_ports,
+                         int nb_sockets);
+
+int picoquic_packet_loop_open_sockets(int local_port, int local_af, SOCKET_TYPE * s_socket, int * sock_af,
+                                      uint16_t * sock_ports, int socket_buffer_size, int nb_sockets_max);
+
 #ifdef __cplusplus
 }
 #endif
