@@ -1115,7 +1115,15 @@ const uint8_t* picoquic_decode_stream_frame(picoquic_cnx_t* cnx, const uint8_t* 
     return bytes;
 }
 
-picoquic_stream_head_t* picoquic_find_ready_stream(picoquic_cnx_t* cnx)
+void addr_to_str(struct sockaddr_storage* addr) {
+    if (addr != NULL) {
+        struct sockaddr_in *sin = (struct sockaddr_in *)addr;
+        char *ip = (unsigned char *)&sin->sin_addr.s_addr;
+        printf("addr_to_str %d.%d.%d.%d\n", ip[0], ip[1], ip[2], ip[3]);
+    }
+}
+
+picoquic_stream_head_t* picoquic_find_ready_stream(picoquic_cnx_t* cnx, picoquic_path_t* path_x, char *str)
 {
     picoquic_stream_head_t* first_stream = cnx->first_output_stream;
     picoquic_stream_head_t* stream = first_stream;
@@ -1127,6 +1135,21 @@ picoquic_stream_head_t* picoquic_find_ready_stream(picoquic_cnx_t* cnx)
     while (stream != NULL) {
         int has_data = 0;
         picoquic_stream_head_t* next_stream = stream->next_output_stream;
+        printf("from: %s, stream_id: %lu, stream->path_affinity == 0: %d, path_x == NULL: %d\n", str, stream->stream_id, stream->path_affinity == 0, path_x == NULL);
+        if (stream->path_affinity != 0 && path_x != NULL) {
+            addr_to_str(&stream->path_affinity_peer_addr);
+            addr_to_str(&stream->path_affinity_local_addr);
+
+            addr_to_str(&path_x->peer_addr);
+            addr_to_str(&path_x->local_addr);
+            if (picoquic_compare_addr((struct sockaddr*)&stream->path_affinity_peer_addr, (struct sockaddr*)&path_x->peer_addr) == 0) {
+                printf("stream path affinity match\n");
+            } else {
+                stream = next_stream;
+                printf("doesn't match, continue\n");
+                continue;
+            }
+        }
 
         if (found_stream != NULL && stream->stream_priority > found_stream->stream_priority) {
             /* All the streams at that priority level have been examined,
@@ -1585,11 +1608,11 @@ uint8_t * picoquic_format_stream_frame(picoquic_cnx_t* cnx, picoquic_stream_head
  * Update is_pure_ack if formated frames require ack
  * Set stream_tried_and_failed if there was nothing to send, indicating the app limited condition.
  */
-uint8_t* picoquic_format_available_stream_frames(picoquic_cnx_t* cnx, uint8_t* bytes_next, uint8_t* bytes_max, int* more_data,
+uint8_t* picoquic_format_available_stream_frames(picoquic_cnx_t* cnx, picoquic_path_t * path_x, uint8_t* bytes_next, uint8_t* bytes_max, int* more_data,
     int* is_pure_ack, int* stream_tried_and_failed, int* ret)
 {
     uint8_t* bytes_previous = bytes_next;
-    picoquic_stream_head_t* stream = picoquic_find_ready_stream(cnx);
+    picoquic_stream_head_t* stream = picoquic_find_ready_stream(cnx, path_x, "picoquic_format_available_stream_frames:1621");
     int more_stream_data = 0;
 
     while (*ret == 0 && stream != NULL && bytes_next < bytes_max) {
@@ -1599,7 +1622,7 @@ uint8_t* picoquic_format_available_stream_frames(picoquic_cnx_t* cnx, uint8_t* b
 
         if (*ret == 0) {
             if (bytes_next + 17 < bytes_max) {
-                stream = picoquic_find_ready_stream(cnx);
+                stream = picoquic_find_ready_stream(cnx, path_x, "picoquic_format_available_stream_frames:1631");
             }
             else {
                 more_stream_data = 1;

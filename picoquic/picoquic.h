@@ -987,6 +987,9 @@ void picoquic_set_default_priority(picoquic_quic_t* quic, uint8_t default_stream
 /* Set the priority level of a stream. */
 int picoquic_set_stream_priority(picoquic_cnx_t* cnx, uint64_t stream_id, uint8_t stream_priority);
 
+/* Set path affinity */
+int picoquic_set_stream_path_affinity(picoquic_cnx_t* cnx, uint64_t stream_id, struct sockaddr_storage src_addr, struct sockaddr_storage dst_addr);
+
 int picoquic_mark_high_priority_stream(picoquic_cnx_t* cnx,
     uint64_t stream_id, int is_high_priority);
 

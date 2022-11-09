@@ -783,6 +783,12 @@ typedef struct st_picoquic_stream_head_t {
     picoquic_sack_list_t sack_list; /* Track which parts of the stream were acknowledged by the peer */
     /* Stream priority -- lowest is most urgent */
     uint8_t stream_priority;
+    /* Path affinity -- either points to NULL or to the path on which this stream should be sent*/
+//    picoquic_path_t* path_affinity;
+    int path_affinity;
+    struct sockaddr_storage path_affinity_peer_addr;
+    struct sockaddr_storage path_affinity_local_addr;
+
     /* Flags describing the state of the stream */
     unsigned int is_active : 1; /* The application is actively managing data sending through callbacks */
     unsigned int fin_requested : 1; /* Application has requested Fin of sending stream */
@@ -1685,7 +1691,7 @@ picoquic_stream_head_t * picoquic_last_stream(picoquic_cnx_t * cnx);
 picoquic_stream_head_t * picoquic_next_stream(picoquic_stream_head_t * stream);
 picoquic_stream_head_t* picoquic_find_stream(picoquic_cnx_t* cnx, uint64_t stream_id);
 void picoquic_add_output_streams(picoquic_cnx_t * cnx, uint64_t old_limit, uint64_t new_limit, unsigned int is_bidir);
-picoquic_stream_head_t* picoquic_find_ready_stream(picoquic_cnx_t* cnx);
+picoquic_stream_head_t* picoquic_find_ready_stream(picoquic_cnx_t* cnx, picoquic_path_t* path_x, char *str);
 int picoquic_is_tls_stream_ready(picoquic_cnx_t* cnx);
 const uint8_t* picoquic_decode_stream_frame(picoquic_cnx_t* cnx, const uint8_t* bytes,
     const uint8_t* bytes_max, picoquic_stream_data_node_t* received_data, uint64_t current_time);
@@ -1706,7 +1712,7 @@ void picoquic_update_max_stream_ID_local(picoquic_cnx_t* cnx, picoquic_stream_he
 int picoquic_check_frame_needs_repeat(picoquic_cnx_t* cnx, const uint8_t* bytes,
     size_t bytes_max, picoquic_packet_type_enum p_type,
     int* no_need_to_repeat, int* do_not_detect_spurious, int is_preemptive);
-uint8_t* picoquic_format_available_stream_frames(picoquic_cnx_t* cnx, uint8_t* bytes_next, uint8_t* bytes_max,
+uint8_t* picoquic_format_available_stream_frames(picoquic_cnx_t* cnx, picoquic_path_t * path_x, uint8_t* bytes_next, uint8_t* bytes_max,
     int* more_data, int* is_pure_ack, int* stream_tried_and_failed, int* ret);
 uint8_t* picoquic_format_stream_frame_for_retransmit(picoquic_cnx_t* cnx, 
     uint8_t* bytes_next, uint8_t* bytes_max, int* is_pure_ack);

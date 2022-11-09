@@ -1785,6 +1785,7 @@ int picoquic_find_path_by_address(picoquic_cnx_t* cnx, const struct sockaddr* ad
     }
 
     if (path_id == -1) {
+        printf("Could not find path\n");
         DBG_PRINTF("%s", "Could not find path");
     }
 

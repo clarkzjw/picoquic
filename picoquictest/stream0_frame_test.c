@@ -704,7 +704,7 @@ int stream_output_test_delete(picoquic_cnx_t * cnx, uint64_t stream_id, int R_or
         picoquic_remove_output_stream(cnx, stream, NULL);
         picoquic_delete_stream_if_closed(cnx, stream);
         /* Call ready stream to check availability after deletion  */
-        ready_stream = picoquic_find_ready_stream(cnx);
+        ready_stream = picoquic_find_ready_stream(cnx, NULL, "");
         /* Verify that ready stream is as expected */
         if (ready_stream == NULL) {
             if (!is_last) {
@@ -804,7 +804,7 @@ int stream_output_test()
 
             if (ret == 0) {
                 /* Check that find ready stream returns NULL when no stream is ready */
-                stream = picoquic_find_ready_stream(cnx);
+                stream = picoquic_find_ready_stream(cnx, NULL, "");
                 if (stream != NULL) {
                     DBG_PRINTF("Unexpected ready stream[%d]\n", (int)stream->stream_id);
                     ret = -1;
@@ -822,7 +822,7 @@ int stream_output_test()
                 }
 
                 /* Check that first stream is what we expect */
-                stream = picoquic_find_ready_stream(cnx);
+                stream = picoquic_find_ready_stream(cnx, NULL, "");
                 if (stream == NULL) {
                     DBG_PRINTF("Expected stream[%d],got NULL\n", (int)output2[0]);
                     ret = -1;

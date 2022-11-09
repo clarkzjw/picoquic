@@ -156,6 +156,56 @@ int picoquic_set_stream_priority(picoquic_cnx_t* cnx, uint64_t stream_id, uint8_
     return ret;
 }
 
+extern void addr_to_str(struct sockaddr_storage* addr);
+
+int picoquic_set_stream_path_affinity(picoquic_cnx_t* cnx, uint64_t stream_id, struct sockaddr_storage src_addr, struct sockaddr_storage dst_addr) {
+    int ret = 0;
+    int partial_match_path = -1;
+    int path_id;
+    picoquic_stream_head_t* stream = picoquic_find_stream_for_writing(cnx, stream_id, &ret);
+
+    if (ret == 0) {
+        picoquic_store_addr(&stream->path_affinity_peer_addr, (struct sockaddr *)&dst_addr);
+        picoquic_store_addr(&stream->path_affinity_local_addr, (struct sockaddr *)&src_addr);
+        stream->path_affinity = 1;
+
+        printf("picoquic_set_stream_path_affinity\n");
+        addr_to_str(&dst_addr);
+        addr_to_str(&src_addr);
+    }
+
+    return ret;
+}
+
+/*
+int picoquic_set_stream_path_affinity(picoquic_cnx_t* cnx, uint64_t stream_id, struct sockaddr* src_addr, struct sockaddr* dst_addr) {
+    int ret = 0;
+    int partial_match_path = -1;
+    int path_id;
+    picoquic_stream_head_t* stream = picoquic_find_stream_for_writing(cnx, stream_id, &ret);
+
+    if (ret == 0) {
+        stream->path_affinity_peer_addr = (struct sockaddr_storage *)malloc(sizeof(struct sockaddr_storage));
+        stream->path_affinity_local_addr = (struct sockaddr_storage *)malloc(sizeof(struct sockaddr_storage));
+
+        picoquic_store_addr(stream->path_affinity_peer_addr, dst_addr);
+        picoquic_store_addr(stream->path_affinity_local_addr, src_addr);
+        stream->path_affinity = 1;
+
+        printf("picoquic_set_stream_path_affinity, stream_id: %lu\n", stream_id);
+        addr_to_str(stream->path_affinity_peer_addr);
+        addr_to_str(stream->path_affinity_local_addr);
+//        path_id = picoquic_find_path_by_address(cnx, src_addr, dst_addr, &partial_match_path);
+//        printf("set affinity path_id: %d, stream_id: %lu\n", path_id, stream_id);
+//        if (path_id >= 0) {
+//            stream->path_affinity = cnx->path[path_id];
+//        }
+    }
+
+    return ret;
+}
+ */
+
 int picoquic_mark_high_priority_stream(picoquic_cnx_t * cnx, uint64_t stream_id, int is_high_priority)
 {
     int ret;
@@ -2303,7 +2353,7 @@ int picoquic_prepare_packet_0rtt(picoquic_cnx_t* cnx, picoquic_path_t * path_x, 
     }
     bytes_max = bytes + send_buffer_max - checksum_overhead;
 
-    stream = picoquic_find_ready_stream(cnx);
+    stream = picoquic_find_ready_stream(cnx, NULL, "picoquic_prepare_packet_0rtt:2335");
     length = picoquic_predict_packet_header_length(cnx, packet_type, &cnx->pkt_ctx[picoquic_packet_context_application]);
     packet->ptype = picoquic_packet_0rtt_protected;
     packet->offset = length;
@@ -2338,7 +2388,7 @@ int picoquic_prepare_packet_0rtt(picoquic_cnx_t* cnx, picoquic_path_t * path_x, 
         }
 
         /* Encode the stream frame, or frames */
-        bytes_next = picoquic_format_available_stream_frames(cnx, bytes_next, bytes_max, &more_data, &is_pure_ack, &stream_tried_and_failed, &ret);
+        bytes_next = picoquic_format_available_stream_frames(cnx, path_x, bytes_next, bytes_max, &more_data, &is_pure_ack, &stream_tried_and_failed, &ret);
 
         length = bytes_next - bytes;
 
@@ -3647,7 +3697,7 @@ int picoquic_prepare_packet_almost_ready(picoquic_cnx_t* cnx, picoquic_path_t* p
                             bytes_next = picoquic_format_ack_frequency_frame(cnx, bytes_next, bytes_max, &more_data);
                         }
 
-                        bytes_next = picoquic_format_available_stream_frames(cnx, bytes_next, bytes_max, &more_data, &is_pure_ack, &stream_tried_and_failed, &ret);
+                        bytes_next = picoquic_format_available_stream_frames(cnx, path_x, bytes_next, bytes_max, &more_data, &is_pure_ack, &stream_tried_and_failed, &ret);
  
                         /* TODO: replace this by posting of frame when CWIN estimated */
                         /* Send bdp frames if there are no stream frames to send 
@@ -4080,11 +4130,11 @@ int picoquic_prepare_packet_ready(picoquic_cnx_t* cnx, picoquic_path_t* path_x, 
                         /* Encode the stream frame, or frames */
                         if (ret == 0 && !split_repeat_queued){
                             if (bytes_next + 8 < bytes_max) {
-                                bytes_next = picoquic_format_available_stream_frames(cnx, bytes_next, bytes_max, &more_data, &is_pure_ack, &stream_tried_and_failed, &ret);
+                                bytes_next = picoquic_format_available_stream_frames(cnx, path_x, bytes_next, bytes_max, &more_data, &is_pure_ack, &stream_tried_and_failed, &ret);
                                 cnx->datagram_conflicts_count = 0;
                             }
                             else {
-                                picoquic_stream_head_t* stream = picoquic_find_ready_stream(cnx);
+                                picoquic_stream_head_t* stream = picoquic_find_ready_stream(cnx, path_x, "picoquic_prepare_packet_ready:4116");
 
                                 if (stream == NULL) {
                                     cnx->datagram_conflicts_count = 0;
@@ -4747,6 +4797,7 @@ int picoquic_prepare_packet_ex(picoquic_cnx_t* cnx,
                     break;
                 }
                 else {
+                    printf("path_id: %d\n", path_id);
                     ret = picoquic_prepare_segment(cnx, cnx->path[path_id], packet, current_time,
                         packet_buffer + packet_size, available, &segment_length, &next_wake_time, &is_initial_sent);
 
