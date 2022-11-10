@@ -90,6 +90,19 @@ int picoquic_socket_set_pkt_info(SOCKET_TYPE sd, int af)
     return ret;
 }
 
+int picoquic_socket_bind_to_interface(SOCKET_TYPE sd, char *if_name)
+{
+    if (strlen(if_name) == 0) {
+        printf("if_name is empty, bind socket to interface failed\n");
+        return -1;
+    }
+    printf("picoquic_socket_bind_to_interface %s\n", if_name);
+    int ret = setsockopt(sd, SOL_SOCKET, SO_BINDTODEVICE, if_name, strlen(if_name));
+
+    return ret;
+}
+
+
 int picoquic_socket_set_ecn_options(SOCKET_TYPE sd, int af, int * recv_set, int * send_set)
 {
     int ret = -1;
