@@ -1186,6 +1186,10 @@ void picoquic_subscribe_pacing_rate_updates(picoquic_cnx_t* cnx, uint64_t decrea
 uint64_t picoquic_get_pacing_rate(picoquic_cnx_t* cnx);
 uint64_t picoquic_get_cwin(picoquic_cnx_t* cnx);
 uint64_t picoquic_get_rtt(picoquic_cnx_t* cnx);
+uint64_t picoquic_get_bandwidth_estimate(picoquic_cnx_t* cnx);
+uint64_t picoquic_get_one_way_delay_avg(picoquic_cnx_t* cnx);
+uint64_t picoquic_get_total_bytes_lost(picoquic_cnx_t* cnx);
+uint64_t picoquic_get_total_received(picoquic_cnx_t* cnx);
 
 /* Probing new path for multipath scenarios.*/
 int picoquic_probe_new_path_ex(picoquic_cnx_t* cnx, const struct sockaddr* addr_from,

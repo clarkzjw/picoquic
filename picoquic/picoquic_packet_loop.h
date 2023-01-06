@@ -82,7 +82,7 @@ int picoquic_packet_loop_bind_interface(picoquic_quic_t* quic,
                                         int do_not_use_gso,
                                         picoquic_packet_loop_cb_fn loop_callback,
                                         void* loop_callback_ctx,
-                                        char *if_name);
+                                        const char *if_name);
 
 int picoquic_packet_loop_with_sockets(picoquic_quic_t* quic,
                                       int local_port,

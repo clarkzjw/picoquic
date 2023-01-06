@@ -4220,7 +4220,28 @@ uint64_t picoquic_get_cwin(picoquic_cnx_t* cnx)
 
 uint64_t picoquic_get_rtt(picoquic_cnx_t* cnx)
 {
-    return cnx->path[0]->smoothed_rtt;
+    return cnx->path[0]->rtt_sample;
+}
+
+uint64_t picoquic_get_bandwidth_estimate(picoquic_cnx_t* cnx)
+{
+    return cnx->path[0]->bandwidth_estimate;
+}
+
+uint64_t picoquic_get_total_bytes_lost(picoquic_cnx_t* cnx)
+{
+    return cnx->path[0]->total_bytes_lost;
+}
+
+uint64_t picoquic_get_total_received(picoquic_cnx_t* cnx)
+{
+    return cnx->path[0]->received;
+}
+
+
+uint64_t picoquic_get_one_way_delay_avg(picoquic_cnx_t* cnx)
+{
+    return cnx->path[0]->one_way_delay_avg;
 }
 
 int picoquic_set_local_addr(picoquic_cnx_t* cnx, struct sockaddr* addr)

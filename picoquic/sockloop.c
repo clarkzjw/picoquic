@@ -522,7 +522,7 @@ int picoquic_packet_loop_bind_interface(picoquic_quic_t* quic,
                          int do_not_use_gso,
                          picoquic_packet_loop_cb_fn loop_callback,
                          void* loop_callback_ctx,
-                         char *if_name)
+                         const char *if_name)
 {
     int ret = 0;
     uint64_t current_time = picoquic_get_quic_time(quic);
@@ -865,8 +865,8 @@ int picoquic_packet_loop_with_sockets(picoquic_quic_t* quic,
 //    int sock_af[PICOQUIC_PACKET_LOOP_SOCKETS_MAX];
 //    uint16_t sock_ports[PICOQUIC_PACKET_LOOP_SOCKETS_MAX];
 //    int nb_sockets = 0;
-    int testing_migration = 0; /* Hook for the migration test */
-    uint16_t next_port = 0; /* Data for the migration test */
+//    int testing_migration = 0; /* Hook for the migration test */
+//    uint16_t next_port = 0; /* Data for the migration test */
     picoquic_cnx_t* last_cnx = NULL;
     int loop_immediate = 0;
     picoquic_packet_loop_options_t options = { 0 };
