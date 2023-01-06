@@ -182,6 +182,8 @@ int picoquic_open_server_sockets(picoquic_server_sockets_t* sockets, int port);
 
 void picoquic_close_server_sockets(picoquic_server_sockets_t* sockets);
 
+int picoquic_socket_bind_to_interface(SOCKET_TYPE sd, char *if_name);
+
 int picoquic_socket_set_pkt_info(SOCKET_TYPE sd, int af);
 int picoquic_socket_set_ecn_options(SOCKET_TYPE sd, int af, int * recv_set, int * send_set);
 int picoquic_socket_set_pmtud_options(SOCKET_TYPE sd, int af);
