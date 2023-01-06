@@ -354,6 +354,15 @@ namespace UnitTest1
 			Assert::AreEqual(ret, 0);
 		}
 
+#if 0
+        /* The TLS API connect test is only useful when debugging issues step by step */
+        TEST_METHOD(tls_api_connect)
+        {
+            int ret = tls_api_connect_test();
+
+            Assert::AreEqual(ret, 0);
+        }
+#endif
         TEST_METHOD(tls_api_inject_hs_ack)
         {
             int ret = tls_api_inject_hs_ack_test();
@@ -514,13 +523,6 @@ namespace UnitTest1
             Assert::AreEqual(ret, 0);
         }
 
-        TEST_METHOD(test_transport_param_stream_id)
-        {
-            int ret = transport_param_stream_id_test();
-
-            Assert::AreEqual(ret, 0);
-        }
-
         TEST_METHOD(vn_tp)
         {
             int ret = vn_tp_test();
@@ -538,13 +540,6 @@ namespace UnitTest1
         TEST_METHOD(stream_rank)
         {
             int ret = stream_rank_test();
-
-            Assert::AreEqual(ret, 0);
-        }
-
-        TEST_METHOD(stream_id_to_rank)
-        {
-            int ret = stream_id_to_rank_test();
 
             Assert::AreEqual(ret, 0);
         }
@@ -1789,6 +1784,36 @@ namespace UnitTest1
             Assert::AreEqual(ret, 0);
         }
 
+        TEST_METHOD(warptest_video) {
+            int ret = warptest_video_test();
+
+            Assert::AreEqual(ret, 0);
+        }
+
+        TEST_METHOD(warptest_video_audio) {
+            int ret = warptest_video_audio_test();
+
+            Assert::AreEqual(ret, 0);
+        }
+
+        TEST_METHOD(warptest_video_data_audio) {
+            int ret = warptest_video_data_audio_test();
+
+            Assert::AreEqual(ret, 0);
+        }
+
+        TEST_METHOD(warptest_worst) {
+            int ret = warptest_worst_test();
+
+            Assert::AreEqual(ret, 0);
+        }
+
+        TEST_METHOD(warptest_param) {
+            int ret = warptest_param_test();
+
+            Assert::AreEqual(ret, 0);
+        }
+
         TEST_METHOD(migration_controlled) {
             int ret = migration_controlled_test();
 
@@ -1992,6 +2017,7 @@ namespace UnitTest1
 
             Assert::AreEqual(ret, 0);
         }
+
         TEST_METHOD(config_option_letters) {
             int ret = config_option_letters_test();
 
@@ -2084,12 +2110,6 @@ namespace UnitTest1
 
         TEST_METHOD(generic_server) {
             int ret = generic_server_test();
-
-            Assert::AreEqual(ret, 0);
-        }
-
-        TEST_METHOD(esni) {
-            int ret = esni_test();
 
             Assert::AreEqual(ret, 0);
         }
@@ -2192,12 +2212,6 @@ namespace UnitTest1
 
         TEST_METHOD(http_drop) {
             int ret = http_drop_test();
-
-            Assert::AreEqual(ret, 0);
-        }
-
-        TEST_METHOD(http_esni) {
-            int ret = http_esni_test();
 
             Assert::AreEqual(ret, 0);
         }

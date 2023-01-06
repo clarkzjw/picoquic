@@ -199,7 +199,7 @@ typedef enum {
 #define PICOQUIC_TWENTYFIRST_INTEROP_VERSION 0xFF000021
 #define PICOQUIC_POST_IESG_VERSION 0xFF000022
 #define PICOQUIC_V1_VERSION 0x00000001
-#define PICOQUIC_V2_VERSION 0x709a50c4
+#define PICOQUIC_V2_VERSION 0x6b3343cf
 #define PICOQUIC_INTERNAL_TEST_VERSION_1 0x50435130
 #define PICOQUIC_INTERNAL_TEST_VERSION_2 0x50435131
 
@@ -587,7 +587,6 @@ typedef int (*picoquic_performance_log_fn)(picoquic_quic_t* quic, picoquic_cnx_t
  */
 typedef struct st_picoquic_quic_t {
     void* tls_master_ctx;
-    struct st_ptls_key_exchange_context_t * esni_key_exchange[16];
     picoquic_stream_data_cb_fn default_callback_fn;
     void* default_callback_ctx;
     char const* default_alpn;
@@ -763,6 +762,7 @@ typedef struct st_picoquic_stream_head_t {
     picosplay_node_t stream_node; /* splay of streams in connection context */
     struct st_picoquic_stream_head_t * next_output_stream; /* link in the list of output streams */
     struct st_picoquic_stream_head_t * previous_output_stream;
+    picoquic_cnx_t * cnx;
     uint64_t stream_id;
     uint64_t consumed_offset; /* amount of data consumed by the application */
     uint64_t fin_offset; /* If the fin mark is received, index of the byte after last */
@@ -1295,8 +1295,6 @@ typedef struct st_picoquic_cnx_t {
     uint64_t nb_spurious;
     uint64_t nb_crypto_key_rotations;
     uint64_t nb_packet_holes_inserted;
-    uint64_t max_max_stream_data_local;
-    uint64_t max_max_stream_data_remote;
     uint64_t max_ack_delay_remote;
     uint64_t max_ack_gap_remote;
     uint64_t max_ack_delay_local;
@@ -1322,6 +1320,8 @@ typedef struct st_picoquic_cnx_t {
     uint64_t maxdata_local; /* Highest value sent to the peer */
     uint64_t maxdata_local_acked; /* Highest value acked by the peer */
     uint64_t maxdata_remote; /* Highest value received from the peer */
+    uint64_t max_stream_data_local;
+    uint64_t max_stream_data_remote;
     uint64_t max_stream_id_bidir_local; /* Highest value sent to the peer */
     uint64_t max_stream_id_bidir_rank_acked; /* Highest rank value acked by the peer */
     uint64_t max_stream_id_bidir_local_computed; /* Value computed from stream FIN but not yet sent */
@@ -1470,11 +1470,6 @@ void picoquic_queue_for_retransmit(picoquic_cnx_t* cnx, picoquic_path_t* path_x,
 picoquic_packet_t* picoquic_dequeue_retransmit_packet(picoquic_cnx_t* cnx, picoquic_packet_context_t* pkt_ctx,
     picoquic_packet_t* p, int should_free);
 void picoquic_dequeue_retransmitted_packet(picoquic_cnx_t* cnx, picoquic_packet_context_t* pkt_ctx, picoquic_packet_t* p);
-
-#if 0
-/* Reset connection after receiving version negotiation */
-int picoquic_reset_cnx_version(picoquic_cnx_t* cnx, uint8_t* bytes, size_t length, uint64_t current_time);
-#endif
 
 /* Reset the connection context, e.g. after retry */
 int picoquic_reset_cnx(picoquic_cnx_t* cnx, uint64_t current_time);
@@ -1679,7 +1674,8 @@ void picoquic_update_stream_initial_remote(picoquic_cnx_t* cnx);
 
 picoquic_stream_head_t * picoquic_stream_from_node(picosplay_node_t * node);
 void picoquic_insert_output_stream(picoquic_cnx_t* cnx, picoquic_stream_head_t * stream);
-void picoquic_remove_output_stream(picoquic_cnx_t* cnx, picoquic_stream_head_t * stream, picoquic_stream_head_t * previous_stream);
+void picoquic_remove_output_stream(picoquic_cnx_t* cnx, picoquic_stream_head_t * stream);
+void picoquic_reorder_output_stream(picoquic_cnx_t* cnx, picoquic_stream_head_t* stream);
 picoquic_stream_head_t * picoquic_first_stream(picoquic_cnx_t * cnx);
 picoquic_stream_head_t * picoquic_last_stream(picoquic_cnx_t * cnx);
 picoquic_stream_head_t * picoquic_next_stream(picoquic_stream_head_t * stream);
@@ -1797,9 +1793,6 @@ int picoquic_skip_frame(const uint8_t* bytes, size_t bytes_max, size_t* consumed
 const uint8_t* picoquic_skip_path_abandon_frame(const uint8_t* bytes, const uint8_t* bytes_max);
 
 int picoquic_decode_closing_frames(picoquic_cnx_t* cnx, uint8_t* bytes, size_t bytes_max, int* closing_received);
-
-uint64_t picoquic_decode_transport_param_stream_id(uint64_t rank, int extension_mode, int stream_type);
-uint64_t picoquic_prepare_transport_param_stream_id(uint64_t stream_id);
 
 void picoquic_process_sooner_packets(picoquic_cnx_t* cnx, uint64_t current_time);
 void picoquic_delete_sooner_packets(picoquic_cnx_t* cnx);

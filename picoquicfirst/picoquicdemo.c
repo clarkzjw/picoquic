@@ -720,10 +720,6 @@ int quic_client(const char* ip_address_text, int server_port,
                 cnx_client->test_large_chello = 1;
             }
 
-            if (config->esni_rr_file != NULL) {
-                ret = picoquic_esni_client_from_file(cnx_client, config->esni_rr_file);
-            }
-
             if (config->desired_version != 0) {
                 picoquic_set_desired_version(cnx_client, config->desired_version);
             }
@@ -929,9 +925,9 @@ int quic_client(const char* ip_address_text, int server_port,
                 }
                 /* Print those for debugging the effects of ack frequency and flow control */
                 printf("max_data_local: %" PRIu64 "\n", cnx_client->maxdata_local);
-                printf("max_max_stream_data_local: %" PRIu64 "\n", cnx_client->max_max_stream_data_local);
+                printf("max_stream_data_local: %" PRIu64 "\n", cnx_client->max_stream_data_local);
                 printf("max_data_remote: %" PRIu64 "\n", cnx_client->maxdata_remote);
-                printf("max_max_stream_data_remote: %" PRIu64 "\n", cnx_client->max_max_stream_data_remote);
+                printf("max_stream_data_remote: % " PRIu64 "\n", cnx_client->max_stream_data_remote);
                 printf("ack_delay_remote: %" PRIu64 " ... %" PRIu64 "\n",
                     cnx_client->min_ack_delay_remote, cnx_client->max_ack_delay_remote);
                 printf("max_ack_gap_remote: %" PRIu64 "\n", cnx_client->max_ack_gap_remote);
