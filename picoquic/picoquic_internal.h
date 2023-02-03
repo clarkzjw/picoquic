@@ -200,6 +200,7 @@ typedef enum {
 #define PICOQUIC_POST_IESG_VERSION 0xFF000022
 #define PICOQUIC_V1_VERSION 0x00000001
 #define PICOQUIC_V2_VERSION 0x6b3343cf
+#define PICOQUIC_V2_VERSION_DRAFT 0x709a50c4
 #define PICOQUIC_INTERNAL_TEST_VERSION_1 0x50435130
 #define PICOQUIC_INTERNAL_TEST_VERSION_2 0x50435131
 
@@ -569,7 +570,7 @@ typedef uint64_t picoquic_tp_enum;
 #define picoquic_tp_enable_time_stamp 0x7158  /* x&1 */
 #define picoquic_tp_grease_quic_bit 0x2ab2
 #define picoquic_tp_enable_multipath 0xbabf
-#define picoquic_tp_version_negotiation 0xff73db
+#define picoquic_tp_version_negotiation 0x11
 #define picoquic_tp_enable_bdp_frame 0xebd9 /* per draft-kuhn-quic-0rtt-bdp-09 */
 
 /* Callback for converting binary log to quic log at the end of a connection. 
