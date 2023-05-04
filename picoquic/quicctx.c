@@ -4353,9 +4353,9 @@ uint64_t picoquic_get_total_received(picoquic_cnx_t* cnx)
 }
 
 
-uint64_t picoquic_get_one_way_delay_avg(picoquic_cnx_t* cnx)
+uint64_t picoquic_get_delay(picoquic_cnx_t* cnx)
 {
-    return cnx->path[0]->one_way_delay_avg;
+    return cnx->path[0]->smoothed_rtt;
 }
 
 int picoquic_set_local_addr(picoquic_cnx_t* cnx, struct sockaddr* addr)
