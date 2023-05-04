@@ -489,9 +489,20 @@ static int64_t picoquic_registered_token_compare(void* l, void* r)
     /* STream values are from 0 to 2^62-1, which means we are not worried with rollover */
     picoquic_registered_token_t* rt_l = (picoquic_registered_token_t*)l;
     picoquic_registered_token_t* rt_r = (picoquic_registered_token_t*)r;
-    int64_t ret = rt_l->token_time - rt_r->token_time;
-    if (ret == 0) {
-        ret = rt_l->token_hash - rt_r->token_hash;
+    int64_t ret = 0;
+    if (rt_l->token_time == rt_r->token_time) {
+        if (rt_l->token_hash > rt_r->token_hash) {
+            ret = 1;
+        }
+        else if (rt_l->token_hash < rt_r->token_hash) {
+            ret = -1;
+        }
+    }
+    else if (rt_l->token_time > rt_r->token_time) {
+        ret = 1;
+    }
+    else {
+        ret = -1;
     }
     return ret;
 }
@@ -739,6 +750,11 @@ int picoquic_set_default_tp(picoquic_quic_t* quic, picoquic_tp_t * tp)
     }
 
     return ret;
+}
+
+picoquic_tp_t const* picoquic_get_default_tp(picoquic_quic_t* quic)
+{
+    return quic->default_tp;
 }
 
 void picoquic_set_default_padding(picoquic_quic_t* quic, uint32_t padding_multiple, uint32_t padding_minsize)
@@ -1285,7 +1301,11 @@ static void* picoquic_wake_list_node_value(picosplay_node_t* cnx_wake_node)
 }
 
 static int64_t picoquic_wake_list_compare(void* l, void* r) {
-    return (int64_t)((picoquic_cnx_t*)l)->next_wake_time - ((picoquic_cnx_t*)r)->next_wake_time;
+    const uint64_t ltime = ((picoquic_cnx_t*)l)->next_wake_time;
+    const uint64_t rtime = ((picoquic_cnx_t*)r)->next_wake_time;
+    if (ltime < rtime) return -1;
+    if (ltime > rtime) return 1;
+    return 0;
 }
 
 static picosplay_node_t* picoquic_wake_list_create_node(void* v_cnx)
@@ -1357,13 +1377,26 @@ uint64_t picoquic_get_next_wake_time(picoquic_quic_t* quic, uint64_t current_tim
 int64_t picoquic_get_next_wake_delay(picoquic_quic_t* quic,
     uint64_t current_time, int64_t delay_max)
 {
+    /* We assume that "current time" is no more than 100,000 years in the
+     * future, which implies the time in microseconds is less than 2^62.
+     * The delay MAX is lower than INT64_MAX, i.e., 2^63.
+     * The next wake time is often set to UINT64_MAX, and might sometime
+     * me just under that value, so we make sure to avoid integer
+     * overflow in the computation.
+     */
     uint64_t next_wake_time = picoquic_get_next_wake_time(quic, current_time);
-    int64_t wake_delay = next_wake_time - current_time;
+    int64_t wake_delay = 0;
 
-    if (wake_delay > delay_max || next_wake_time == UINT64_MAX) {
-        wake_delay = delay_max;
+    if (next_wake_time > current_time) {
+        uint64_t delta_m = current_time + delay_max;
+
+        if (next_wake_time >= delta_m) {
+            wake_delay = delay_max;
+        }
+        else {
+            wake_delay = (int64_t)(next_wake_time - current_time);
+        }
     }
-
     return wake_delay;
 }
 
@@ -1383,16 +1416,23 @@ static uint64_t picoquic_get_wake_time(picoquic_cnx_t* cnx, uint64_t current_tim
 int64_t picoquic_get_wake_delay(picoquic_cnx_t* cnx,
     uint64_t current_time, int64_t delay_max)
 {
+    /* See get_next_wake_delay for reasoning about integer overflow */
     uint64_t next_wake_time = picoquic_get_wake_time(cnx, current_time);
-    int64_t wake_delay = next_wake_time - current_time;
+    int64_t wake_delay = 0;
 
-    if (wake_delay > delay_max || next_wake_time == UINT64_MAX) {
-        wake_delay = delay_max;
+    if (next_wake_time > current_time) {
+        uint64_t delta_m = current_time + delay_max;
+
+        if (next_wake_time >= delta_m) {
+            wake_delay = delay_max;
+        }
+        else {
+            wake_delay = (int64_t)(next_wake_time - current_time);
+        }
     }
 
     return wake_delay;
 }
-
 
 /* Other context management functions */
 

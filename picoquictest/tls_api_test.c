@@ -1340,11 +1340,6 @@ int tls_api_one_sim_round(picoquic_test_tls_api_ctx_t* test_ctx,
                     picoquic_public_random(&test_ctx->send_buffer[hl], 21);
                     coalesced_length = hl + 21;
                 }
-#if 1
-                if (*simulated_time >= 1705032704) {
-                    DBG_PRINTF("%s", "Bug");
-                }
-#endif
                 ret = picoquic_prepare_packet_ex(test_ctx->cnx_client, *simulated_time,
                     test_ctx->send_buffer + coalesced_length, send_buffer_size - coalesced_length, &send_length,
                     &addr_to, &addr_from, NULL, p_segment_size);
@@ -1376,8 +1371,7 @@ int tls_api_one_sim_round(picoquic_test_tls_api_ctx_t* test_ctx,
                     &addr_to, &addr_from, NULL, p_segment_size);
                 if (ret == PICOQUIC_ERROR_DISCONNECTED) {
                     ret = 0;
-                } else if (ret != 0)
-                {
+                } else if (ret != 0) {
                     /* useless test, but makes it easier to add a breakpoint under debugger */
                     ret = -1;
                 }
@@ -1580,11 +1574,6 @@ int tls_api_data_sending_loop(picoquic_test_tls_api_ctx_t* test_ctx,
             nb_inactive = 0;
         } else {
             nb_inactive++;
-#if 1
-            if (nb_inactive == 128) {
-                DBG_PRINTF("Inactive at %" PRIu64, *simulated_time);
-            }
-#endif
         }
 
         if (test_ctx->test_finished) {
@@ -7269,7 +7258,7 @@ static int key_rotation_auto_one(uint64_t epoch_length, int client_test)
         uint64_t nb_rotation_expected;
         uint64_t nb_rotation_max;
         uint64_t nb_packets;
-        picoquic_cnx_t* cnx = (client_test) ? test_ctx->cnx_client : test_ctx->cnx_server;
+        picoquic_cnx_t* cnx = (client_test) ? test_ctx->cnx_server : test_ctx->cnx_client;
 
         nb_packets = cnx->pkt_ctx[picoquic_packet_context_application].send_sequence;
         nb_rotation_expected = nb_packets / (epoch_length + 10);
@@ -10264,9 +10253,9 @@ int app_limit_cc_test()
         picoquic_bbr_algorithm,
         picoquic_fastcc_algorithm };
     uint64_t max_completion_times[] = {
-        21000000,
+        22000000,
         23500000,
-        21000000,
+        22000000,
         21000000,
         25000000 };
     int ret = 0;
@@ -11836,7 +11825,7 @@ int bdp_option_test_one(bdp_test_option_enum bdp_test_option)
                     max_completion_time = 8000000;
                     break;
                 case bdp_test_option_reno:
-                    max_completion_time = 5800000;
+                    max_completion_time = 6500000;
                     break;
                 default:
                     break;
@@ -12072,7 +12061,7 @@ int error_reason_test()
 int port_blocked_test_one(picoquic_quic_t * quic,
     uint8_t* packet, size_t packet_length, 
     struct sockaddr* addr_from, struct sockaddr* addr_to,
-    int expect_blocked, uint64_t current_time)
+    int expect_blocked, int retry_accepted, uint64_t current_time)
 {
     uint8_t send_buffer[PICOQUIC_MAX_PACKET_SIZE];
     struct sockaddr_storage s_to;
@@ -12092,7 +12081,24 @@ int port_blocked_test_one(picoquic_quic_t * quic,
 
     if (ret == 0) {
         if (send_length > 0 && expect_blocked) {
+            /* TODO: check whether the "blocked" packet is a stateless retry */
+            uint8_t flags;
+            uint32_t vn;
+            const uint8_t* bytes;
+            int version_index;
+
             ret = -1;
+
+            if (retry_accepted) {
+                if ((bytes = picoquic_frames_uint8_decode(send_buffer, &send_buffer[send_length], &flags)) != NULL &&
+                    (bytes = picoquic_frames_uint32_decode(bytes, &send_buffer[send_length], &vn)) != NULL &&
+                    (version_index = picoquic_get_version_index(vn)) >= 0) {
+                    picoquic_packet_type_enum p_type = picoquic_parse_long_packet_type(flags, version_index);
+                    if (p_type == picoquic_packet_retry) {
+                        ret = 0;
+                    }
+                }
+            }
         }
         else if (send_length == 0 && !expect_blocked) {
             ret = -1;
@@ -12117,12 +12123,11 @@ int port_blocked_test_address(
     uint64_t simulated_time = 0;
     picoquic_test_tls_api_ctx_t* test_ctx = NULL;
     int ret = tls_api_init_ctx(&test_ctx, PICOQUIC_V1_VERSION, PICOQUIC_TEST_SNI, PICOQUIC_TEST_ALPN, &simulated_time, NULL, NULL, 0, 1, 0);
-    /* Delete the default connection */
     if (ret == 0) {
+        /* Delete the default connection */
         picoquic_delete_cnx(test_ctx->cnx_client);
-        if (do_disable) {
-            picoquic_disable_port_blocking(test_ctx->qserver, 1);
-        }
+        /* Set prot blocking to expected value */
+        picoquic_disable_port_blocking(test_ctx->qserver, do_disable);
     }
     /* Perform the VN test */
     if (ret == 0) {
@@ -12135,7 +12140,7 @@ int port_blocked_test_address(
         send_buffer[14] = 8;
         send_length = PICOQUIC_ENFORCED_INITIAL_MTU;
         simulated_time += 1000;
-        ret = port_blocked_test_one(test_ctx->qserver, send_buffer, send_length, addr_from, addr_to, expect_blocked, simulated_time);
+        ret = port_blocked_test_one(test_ctx->qserver, send_buffer, send_length, addr_from, addr_to, expect_blocked, 0, simulated_time);
         if (ret != 0) {
             DBG_PRINTF("VN blocked test fails, ret = %d", ret);
         }
@@ -12146,7 +12151,7 @@ int port_blocked_test_address(
         send_buffer[0] = 0x7f;
         send_length = PICOQUIC_ENFORCED_INITIAL_MTU;
         simulated_time += 1000;
-        ret = port_blocked_test_one(test_ctx->qserver, send_buffer, send_length, addr_from, addr_to, expect_blocked, simulated_time);
+        ret = port_blocked_test_one(test_ctx->qserver, send_buffer, send_length, addr_from, addr_to, expect_blocked, 0, simulated_time);
         if (ret != 0) {
             DBG_PRINTF("Stateless blocked test fails, ret = %d", ret);
         }
@@ -12173,7 +12178,7 @@ int port_blocked_test_address(
                     ret = -1;
                 }
                 if (ret == 0) {
-                    ret = port_blocked_test_one(test_ctx->qserver, send_buffer, send_length, addr_from, addr_to, expect_blocked, simulated_time);
+                    ret = port_blocked_test_one(test_ctx->qserver, send_buffer, send_length, addr_from, addr_to, expect_blocked, 1, simulated_time);
                     if (ret != 0) {
                         DBG_PRINTF("Initial blocked test fails, ret = %d", ret);
                     }

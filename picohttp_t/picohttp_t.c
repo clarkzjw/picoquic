@@ -50,6 +50,7 @@ static const picoquic_test_def_t test_table[] = {
     { "h3zero_parse_qpack", h3zero_parse_qpack_test },
     { "h3zero_prepare_qpack", h3zero_prepare_qpack_test },
     { "h3zero_user_agent", h3zero_user_agent_test },
+    { "h3zero_uri", h3zero_uri_test },
     { "h3zero_null_sni", h3zero_null_sni_test },
     { "h3zero_qpack_fuzz", h3zero_qpack_fuzz_test },
     { "h3zero_stream_test", h3zero_stream_test },
@@ -74,10 +75,18 @@ static const picoquic_test_def_t test_table[] = {
     { "h09_multi_file", h09_multi_file_test },
     { "h09_multi_file_loss", h09_multi_file_loss_test },
     { "h09_multi_file_preemptive", h09_multi_file_preemptive_test },
+    { "h3zero_settings", h3zero_settings_test },
     { "http_stress", http_stress_test },
     { "http_corrupt", http_corrupt_test},
     { "http_corrupt_rdpn", http_corrupt_rdpn_test},
-    { "http_drop", http_drop_test}
+    { "http_drop", http_drop_test},
+    { "picowt_baton_basic", picowt_baton_basic_test },
+    { "picowt_baton_error", picowt_baton_error_test },
+    { "picowt_baton_long", picowt_baton_long_test },
+    { "picowt_baton_multi", picowt_baton_multi_test },
+    { "picowt_baton_random", picowt_baton_random_test },
+    { "picowt_baton_uri", picowt_baton_uri_test },
+    { "picowt_baton_wrong", picowt_baton_wrong_test }
 };
 
 static size_t const nb_tests = sizeof(test_table) / sizeof(picoquic_test_def_t);

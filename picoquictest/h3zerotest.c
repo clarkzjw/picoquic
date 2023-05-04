@@ -26,6 +26,7 @@
 #include "picoquic_utils.h"
 #include "picoquictest_internal.h"
 #include "h3zero.h"
+#include "h3zero_common.h"
 #include "democlient.h"
 #include "demoserver.h"
 #ifdef _WINDOWS
@@ -550,6 +551,8 @@ int qpack_huffman_base_test()
 #define QPACK_TEST_HEADER_DEQPACK_PATH 'Z', 'Z', 'Z'
 #define QPACK_TEST_HEADER_HOST 0x50, 0x0b, 'e', 'x', 'a', 'm', 'p', 'l', 'e', '.', 'c', 'o', 'm'
 #define QPACK_TEST_HEADER_ALLOW_GET_POST 
+#define QPACK_TEST_ALLOWED_METHODS 'G', 'E', 'T', ',', ' ', 'P', 'O', 'S', 'T', ',', ' ', 'C', 'O', 'N', 'N', 'E', 'C', 'T'
+#define QPACK_TEST_ALLOWED_METHODS_LEN 18
 
 static uint8_t qpack_test_get_slash[] = {
     QPACK_TEST_HEADER_BLOCK_PREFIX, 0xC0|17, 0xC0 | 1 };
@@ -585,7 +588,7 @@ static uint8_t qpack_test_status_405_code[] = {
 static uint8_t qpack_test_status_405_null[] = {
     QPACK_TEST_HEADER_BLOCK_PREFIX, 0x50 | 0x0F,  H3ZERO_QPACK_CODE_404 - 0x0F, 3, '4', '0', '5',
     0x50 | 0x0F, H3ZERO_QPACK_ALLOW_GET - 0x0F,
-    9, 'G', 'E', 'T', ',', ' ', 'P', 'O', 'S', 'T' };
+    QPACK_TEST_ALLOWED_METHODS_LEN, QPACK_TEST_ALLOWED_METHODS };
 
 static uint8_t qpack_test_get_zzz[] = {
     QPACK_TEST_HEADER_BLOCK_PREFIX, 0xC0 | 17, 0x50 | 1,
@@ -658,11 +661,50 @@ static uint8_t qpack_get_long_file_name[] = {
      0x50, 0x10, 0x74, 0x65, 0x73, 0x74, 0x2e, 0x65, 0x78, 0x61, 0x6d, 0x70, 0x6c, 0x65, 0x2e, 0x63, 0x6f, 0x6d
 };
 
+/* 
+* From RFC 8441 and draft-ietf-webtrans-http3-01.html :
+*   HEADERS + END_HEADERS
+*   :method = CONNECT
+*   : protocol = webtransport
+*   : scheme = https
+*   : path = /wtp
+*   : authority = example.com
+*   origin = http ://www.example.com
+*/
+
+#define CONNECT_TEST_PROTOCOL_PATH '/', 'w', 't', 'p'
+#define CONNECT_TEST_PROTOCOL_PATH_LEN 4
+#define CONNECT_TEST_PROTOCOL_PSH ':', 'p', 'r', 'o', 't', 'o', 'c', 'o', 'l'
+#define CONNECT_TEST_PROTOCOL_PSH_LEN 9
+#define CONNECT_TEST_PROTOCOL_WTP 'w', 'e', 'b', 't', 'r', 'a', 'n', 's', 'p', 'o', 'r', 't'
+#define CONNECT_TEST_PROTOCOL_WTP_LEN 12
+#define CONNECT_TEST_AUTHORITY 'e', 'x', 'a', 'm', 'p', 'l', 'e', '.', 'c', 'o', 'm'
+#define CONNECT_TEST_AUTHORITY_LEN 11
+#define CONNECT_TEST_ORIGIN 'h', 't', 't', 'p', 's', ':', '/', '/', CONNECT_TEST_AUTHORITY
+#define CONNECT_TEST_ORIGIN_LEN (8 + CONNECT_TEST_AUTHORITY_LEN)
+
+char const web_transport_str[] = { CONNECT_TEST_PROTOCOL_WTP, 0 };
+
+static uint8_t qpack_connect_webtransport[] = {
+    QPACK_TEST_HEADER_BLOCK_PREFIX, 
+    0xC0 | 15, 
+    0x50 | 1,
+    CONNECT_TEST_PROTOCOL_PATH_LEN, CONNECT_TEST_PROTOCOL_PATH,
+    0x27, CONNECT_TEST_PROTOCOL_PSH_LEN - 7, CONNECT_TEST_PROTOCOL_PSH,
+    CONNECT_TEST_PROTOCOL_WTP_LEN, CONNECT_TEST_PROTOCOL_WTP,
+    0xC0 | 23, /* Scheme HTTPs, QPACK: 23 */
+    0x50 | 0, /* Header: authority */
+    CONNECT_TEST_AUTHORITY_LEN, CONNECT_TEST_AUTHORITY,
+    0x50 | 0x0F, 90 - 0x0F, /* header: origin */
+    CONNECT_TEST_ORIGIN_LEN, CONNECT_TEST_ORIGIN
+};
+
 static uint8_t qpack_test_string_index_html[] = { QPACK_TEST_HEADER_INDEX_HTML };
 static uint8_t qpack_test_string_slash[] = { '/' };
 static uint8_t qpack_test_string_zzz[] = { 'Z', 'Z', 'Z' };
 static uint8_t qpack_test_string_1234[] = { '/', '1', '2', '3', '4' };
 static uint8_t qpack_test_string_long[] = { '/', FILE_NAME_LONG };
+static uint8_t qpack_test_string_wtp[] = { CONNECT_TEST_PROTOCOL_PATH };
 
 typedef struct st_qpack_test_case_t {
     uint8_t * bytes;
@@ -673,79 +715,84 @@ typedef struct st_qpack_test_case_t {
 static qpack_test_case_t qpack_test_case[] = {
     {
         qpack_test_get_slash, sizeof(qpack_test_get_slash),
-        { h3zero_method_get, qpack_test_string_slash, 1, 0, 0}
+        { h3zero_method_get, qpack_test_string_slash, 1, 0, 0, NULL, 0}
     },
     {
         qpack_test_get_slash_null, sizeof(qpack_test_get_slash_null),
-        { h3zero_method_get, qpack_test_string_slash, 1, 0, 0}
+        { h3zero_method_get, qpack_test_string_slash, 1, 0, 0, NULL, 0}
     },
     {
         qpack_test_get_slash_prefix, sizeof(qpack_test_get_slash_prefix),
-        { h3zero_method_get, qpack_test_string_slash, 1, 0, 0}
+        { h3zero_method_get, qpack_test_string_slash, 1, 0, 0, NULL, 0}
     },
     {
         qpack_test_get_index_html, sizeof(qpack_test_get_index_html),
-        { h3zero_method_get, qpack_test_string_index_html, QPACK_TEST_HEADER_INDEX_HTML_LEN, 0, 0}
+        { h3zero_method_get, qpack_test_string_index_html, QPACK_TEST_HEADER_INDEX_HTML_LEN, 0, 0, NULL, 0}
     },
     {
         qpack_test_get_index_html_long, sizeof(qpack_test_get_index_html_long),
-        { h3zero_method_get, qpack_test_string_index_html, QPACK_TEST_HEADER_INDEX_HTML_LEN, 0, 0}
+        { h3zero_method_get, qpack_test_string_index_html, QPACK_TEST_HEADER_INDEX_HTML_LEN, 0, 0, NULL, 0}
     },
     {
         qpack_test_status_404, sizeof(qpack_test_status_404),
-        { 0, NULL, 0, 404, 0}
+        { 0, NULL, 0, 404, 0, NULL, 0}
     },
     {
         qpack_test_status_404_code, sizeof(qpack_test_status_404_code),
-        { 0, NULL, 0, 404, 0}
+        { 0, NULL, 0, 404, 0, NULL, 0}
     },
     {
         qpack_test_status_404_long, sizeof(qpack_test_status_404_long),
-        { 0, NULL, 0, 404, 0}
+        { 0, NULL, 0, 404, 0, NULL, 0}
     },
     {
         qpack_test_response_html, sizeof(qpack_test_response_html),
-        { 0, NULL, 0, 200, h3zero_content_type_text_html}
+        { 0, NULL, 0, 200, h3zero_content_type_text_html, NULL, 0}
     },
     {
         qpack_test_status_405_code, sizeof(qpack_test_status_405_code),
-        { 0, NULL, 0, 405, 0}
+        { 0, NULL, 0, 405, 0, NULL, 0}
     },
     {
         qpack_test_status_405_null, sizeof(qpack_test_status_405_null),
-        { 0, NULL, 0, 405, 0}
+        { 0, NULL, 0, 405, 0, NULL, 0}
     },
     {
         qpack_test_get_zzz, sizeof(qpack_test_get_zzz),
-        { h3zero_method_get, qpack_test_string_zzz, sizeof(qpack_test_string_zzz), 0, 0}
+        { h3zero_method_get, qpack_test_string_zzz, sizeof(qpack_test_string_zzz), 0, 0, NULL, 0}
     },
     {
         qpack_test_get_1234, sizeof(qpack_test_get_1234),
-        { h3zero_method_get, qpack_test_string_1234, sizeof(qpack_test_string_1234), 0, 0}
+        { h3zero_method_get, qpack_test_string_1234, sizeof(qpack_test_string_1234), 0, 0, NULL, 0}
     },
     {
         qpack_test_get_ats, sizeof(qpack_test_get_ats),
-        { h3zero_method_get, qpack_test_string_slash, sizeof(qpack_test_string_slash), 0, 0}
+        { h3zero_method_get, qpack_test_string_slash, sizeof(qpack_test_string_slash), 0, 0, NULL, 0}
     },
     {
         qpack_test_get_ats2, sizeof(qpack_test_get_ats2),
-        { h3zero_method_get, qpack_test_string_slash, sizeof(qpack_test_string_slash), 0, 0}
+        { h3zero_method_get, qpack_test_string_slash, sizeof(qpack_test_string_slash), 0, 0, NULL, 0}
     },
     {
         qpack_test_post_zzz, sizeof(qpack_test_post_zzz),
-        { h3zero_method_post, qpack_test_string_zzz, sizeof(qpack_test_string_zzz), 0, h3zero_content_type_text_plain}
+        { h3zero_method_post, qpack_test_string_zzz, sizeof(qpack_test_string_zzz), 0, h3zero_content_type_text_plain, NULL, 0}
     },
     {
         qpack_test_post_zzz_null, sizeof(qpack_test_post_zzz_null),
-        { h3zero_method_post, qpack_test_string_zzz, sizeof(qpack_test_string_zzz), 0, h3zero_content_type_text_plain}
+        { h3zero_method_post, qpack_test_string_zzz, sizeof(qpack_test_string_zzz), 0, h3zero_content_type_text_plain, NULL, 0}
     },
     {
         qpack_status200_akamai, sizeof(qpack_status200_akamai),
-        { h3zero_method_none, NULL, 0, 200, h3zero_content_type_not_supported}
+        { h3zero_method_none, NULL, 0, 200, h3zero_content_type_not_supported, NULL, 0}
     },
     {
         qpack_get_long_file_name, sizeof(qpack_get_long_file_name),
-        { h3zero_method_get, qpack_test_string_long, sizeof(qpack_test_string_long), 0, 0}
+        { h3zero_method_get, qpack_test_string_long, sizeof(qpack_test_string_long), 0, 0, NULL, 0}
+    },
+    {
+        qpack_connect_webtransport, sizeof(qpack_connect_webtransport),
+        { h3zero_method_connect, qpack_test_string_wtp, sizeof(qpack_test_string_wtp), 0, 0,
+        (uint8_t *)web_transport_str, CONNECT_TEST_PROTOCOL_WTP_LEN}
     }
 };
 
@@ -796,11 +843,21 @@ static int h3zero_parse_qpack_test_one(size_t i, uint8_t * data, size_t data_len
         DBG_PRINTF("Qpack case %d parse wrong content_type", i);
         ret = -1;
     }
-
-    if (parts.path != NULL) {
-        free((uint8_t *)parts.path);
-        *((uint8_t **)&parts.path) = NULL;
+    else if (parts.protocol_length != qpack_test_case[i].parts.protocol_length) {
+        DBG_PRINTF("Qpack case %d parse wrong protocol length", i);
+        ret = -1;
     }
+    else if (parts.protocol == NULL && qpack_test_case[i].parts.protocol != NULL) {
+        DBG_PRINTF("Qpack case %d parse path not null", i);
+        ret = -1;
+    }
+    else if (parts.protocol != NULL && parts.protocol_length > 0 &&
+        memcmp(parts.protocol, qpack_test_case[i].parts.protocol, parts.protocol_length) != 0) {
+        DBG_PRINTF("Qpack case %d parse wrong path", i);
+        ret = -1;
+    }
+
+    h3zero_release_header_parts(&parts);
 
     return ret;
 }
@@ -882,7 +939,6 @@ int h3zero_prepare_qpack_test()
 #define QPACK_TEST_UA_STRING_LEN 10
 #define QPACK_TEST_UA_STRING_TEST 'T', 'e', 's', 't', '/', '1', '.', '0'
 #define QPACK_TEST_UA_STRING_TEST_LEN 8
-
 char const h3zero_test_ua_string[] = { QPACK_TEST_UA_STRING_TEST, 0 };
 char const h3zero_test_ua_post_path[] = { QPACK_TEST_HEADER_DEQPACK_PATH, 0 };
 
@@ -906,7 +962,7 @@ static uint8_t qpack_test_status_405_srv[] = {
     QPACK_TEST_HEADER_BLOCK_PREFIX, 0x50 | 0x0F,  H3ZERO_QPACK_CODE_404 - 0x0F, 3, '4', '0', '5',
     0x5f, 92 - 0x0f, QPACK_TEST_UA_STRING_LEN, QPACK_TEST_UA_STRING,
     0x50 | 0x0F, H3ZERO_QPACK_ALLOW_GET - 0x0F,
-    9, 'G', 'E', 'T', ',', ' ', 'P', 'O', 'S', 'T' };
+    QPACK_TEST_ALLOWED_METHODS_LEN, QPACK_TEST_ALLOWED_METHODS };
 static uint8_t qpack_test_get_slash_ua2[] = {
     QPACK_TEST_HEADER_BLOCK_PREFIX, 0xC0 | 17, 0xC0 | 23,
     0x51, 1, '/',
@@ -927,7 +983,7 @@ static uint8_t qpack_test_status_405_srv2[] = {
     QPACK_TEST_HEADER_BLOCK_PREFIX, 0x50 | 0x0F, H3ZERO_QPACK_CODE_404 - 0x0F, 3, '4', '0', '5',
     0x5f, 92 - 0x0f, QPACK_TEST_UA_STRING_TEST_LEN, QPACK_TEST_UA_STRING_TEST,
     0x50 | 0x0F, H3ZERO_QPACK_ALLOW_GET - 0x0F,
-    9, 'G', 'E', 'T', ',', ' ', 'P', 'O', 'S', 'T' };
+    QPACK_TEST_ALLOWED_METHODS_LEN, QPACK_TEST_ALLOWED_METHODS };
 
 typedef struct st_h3zero_user_agent_case_t {
     uint8_t* data;
@@ -1083,9 +1139,7 @@ int h3zero_qpack_fuzz_test()
                  * the test succeeds if that does not cause a crash */
                 memset(&parts, 0, sizeof(parts));
                 parsed = h3zero_parse_qpack_header_frame(parsed, bytes_max, &parts);
-                if (parts.path != NULL) {
-                    free((void*)parts.path);
-                }
+                h3zero_release_header_parts(&parts);
                 n_good += (parsed != NULL) ? 1 : 0;
                 n_trials++;
             }
@@ -1577,7 +1631,7 @@ static int demo_server_test(char const * alpn, picoquic_stream_data_cb_fn server
 
 int h3zero_server_test()
 {
-    return demo_server_test(PICOHTTP_ALPN_H3_LATEST, h3zero_server_callback, NULL, 
+    return demo_server_test(PICOHTTP_ALPN_H3_LATEST, h3zero_callback, NULL, 
         demo_test_scenario, nb_demo_test_scenario, demo_test_stream_length,
         0, 0, 0, 0, NULL, NULL, NULL, 0);
 }
@@ -1675,8 +1729,8 @@ int h09_header_split_test(const uint8_t* bytes, size_t length, size_t split, h09
                 DBG_PRINTF("Expected status %d, got %d", expected->expected_status, stream_ctx->ps.hq.status);
                 ret = -1;
             }
-            else if (stream_ctx->method != expected->expected_method) {
-                DBG_PRINTF("Expected method %d, got %d", expected->expected_method, stream_ctx->method);
+            else if (stream_ctx->ps.hq.method != expected->expected_method) {
+                DBG_PRINTF("Expected method %d, got %d", expected->expected_method, stream_ctx->ps.hq.method);
                 ret = -1;
             }
             else if (stream_ctx->ps.hq.proto != expected->expected_proto) {
@@ -1835,7 +1889,8 @@ typedef struct st_hzero_post_echo_ctx_t {
 
 int h3zero_test_ping_callback(picoquic_cnx_t* cnx,
     uint8_t* bytes, size_t length,
-    picohttp_call_back_event_t event, picohttp_server_stream_ctx_t* stream_ctx)
+    picohttp_call_back_event_t event, picohttp_server_stream_ctx_t* stream_ctx,
+    void * callback_ctx)
 {
     int ret = 0;
     hzero_post_echo_ctx_t* ctx = (hzero_post_echo_ctx_t*)stream_ctx->path_callback_ctx;
@@ -1861,6 +1916,7 @@ int h3zero_test_ping_callback(picoquic_cnx_t* cnx,
         }
         break;
     case picohttp_callback_post_data: /* Data received from peer on stream N */
+    case picohttp_callback_post_fin: /* All posted data have been received, prepare the response now. */
         /* Add data to echo size */
         if (ctx == NULL) {
             ret = -1;
@@ -1874,16 +1930,13 @@ int h3zero_test_ping_callback(picoquic_cnx_t* cnx,
             }
             ctx->nb_received += length;
         }
-        break;
-    case picohttp_callback_post_fin: /* All posted data have been received, prepare the response now. */
-        if (ctx != NULL) {
-            if (ctx->nb_echo <= length) {
-                memcpy(bytes, ctx->buf, ctx->nb_echo);
+        if (event == picohttp_callback_post_fin) {
+            if (ctx != NULL) {
+                ret = (int)ctx->nb_echo;
             }
-            ret = (int)ctx->nb_echo;
-        }
-        else {
-            ret = -1;
+            else {
+                ret = -1;
+            }
         }
         break;
     case picohttp_callback_provide_data:
@@ -1913,7 +1966,7 @@ int h3zero_test_ping_callback(picoquic_cnx_t* cnx,
             }
         }
         break;
-    case picohttp_callback_reset: /* stream is abandoned */
+    case picohttp_callback_free: /* stream is abandoned */
         stream_ctx->path_callback = NULL;
         stream_ctx->path_callback_ctx = NULL;
        
@@ -1936,7 +1989,8 @@ static const picoquic_demo_stream_desc_t post_test_scenario[] = {
 picohttp_server_path_item_t ping_test_item = {
     "/ping",
     5,
-    h3zero_test_ping_callback
+    h3zero_test_ping_callback,
+    NULL
 };
 
 picohttp_server_parameters_t ping_test_param = {
@@ -1952,7 +2006,7 @@ static size_t const post_test_stream_length[] = { 2345 };
 
 int h3zero_post_test()
 {
-    return demo_server_test(PICOHTTP_ALPN_H3_LATEST, h3zero_server_callback, (void*)&ping_test_param, post_test_scenario, nb_post_test_scenario,
+    return demo_server_test(PICOHTTP_ALPN_H3_LATEST, h3zero_callback, (void*)&ping_test_param, post_test_scenario, nb_post_test_scenario,
         post_test_stream_length, 0, 0, 0, 0, NULL, NULL, NULL, 0);
 }
 
@@ -2144,7 +2198,7 @@ int demo_server_file_test()
 
     ret = serve_file_test_set_param(&file_param, file_name_buffer, sizeof(file_name_buffer));
 
-    if (ret == 0 && (ret = demo_server_test(PICOHTTP_ALPN_H3_LATEST, h3zero_server_callback, (void*)&file_param, 
+    if (ret == 0 && (ret = demo_server_test(PICOHTTP_ALPN_H3_LATEST, h3zero_callback, (void*)&file_param, 
         file_test_scenario, nb_file_test_scenario, demo_file_test_stream_length, 0, 0, 0, 0, NULL, NULL, NULL, 0)) != 0) {
         DBG_PRINTF("H3 server (%s) file test fails, ret = %d\n", PICOHTTP_ALPN_H3_LATEST, ret);
     }
@@ -2187,7 +2241,7 @@ static const size_t nb_satellite_test_scenario = sizeof(satellite_test_scenario)
 
 int h3zero_satellite_test()
 {
-    return demo_server_test(PICOHTTP_ALPN_H3_LATEST, h3zero_server_callback, NULL, satellite_test_scenario, nb_satellite_test_scenario,
+    return demo_server_test(PICOHTTP_ALPN_H3_LATEST, h3zero_callback, NULL, satellite_test_scenario, nb_satellite_test_scenario,
         demo_test_stream_length, 1, 0, 10750000, 0, NULL, NULL, NULL, 0);
 }
 
@@ -2275,11 +2329,11 @@ int h3_long_file_name_test()
         scenario_line.f_name = file_name_var;
         scenario_line.post_size = 0;
 
-        ret = demo_server_test(PICOHTTP_ALPN_H3_LATEST, h3zero_server_callback, NULL, &scenario_line, 1,
+        ret = demo_server_test(PICOHTTP_ALPN_H3_LATEST, h3zero_callback, NULL, &scenario_line, 1,
             long_file_name_stream_length, 0, 0, 400000, 0, NULL, NULL, NULL, 0);
     }
 #else
-    ret = demo_server_test(PICOHTTP_ALPN_H3_LATEST, h3zero_server_callback, NULL, 
+    ret = demo_server_test(PICOHTTP_ALPN_H3_LATEST, h3zero_callback, NULL, 
         long_file_name_scenario, nb_long_file_name_scenario, 
         long_file_name_stream_length, 0, 0, 400000, 0, NULL, NULL, NULL, 0);
 #endif
@@ -2513,19 +2567,19 @@ int http_multi_file_test_one(char const * alpn, picoquic_stream_data_cb_fn serve
 
 int h3_multi_file_test()
 {
-    return http_multi_file_test_one(PICOHTTP_ALPN_H3_LATEST, h3zero_server_callback, 0, 0);
+    return http_multi_file_test_one(PICOHTTP_ALPN_H3_LATEST, h3zero_callback, 0, 0);
 }
 
 int h3_multi_file_loss_test()
 {
     uint64_t loss_pattern = 0xa243FFB700000ull;
-    return http_multi_file_test_one(PICOHTTP_ALPN_H3_LATEST, h3zero_server_callback, loss_pattern, 0);
+    return http_multi_file_test_one(PICOHTTP_ALPN_H3_LATEST, h3zero_callback, loss_pattern, 0);
 }
 
 int h3_multi_file_preemptive_test()
 {
     uint64_t loss_pattern = 0xa243FFB700000ull;
-    return http_multi_file_test_one(PICOHTTP_ALPN_H3_LATEST, h3zero_server_callback, loss_pattern, 1);
+    return http_multi_file_test_one(PICOHTTP_ALPN_H3_LATEST, h3zero_callback, loss_pattern, 1);
 }
 
 int h09_multi_file_test()
@@ -3055,6 +3109,73 @@ int demo_alpn_test()
             ret = -1;
             break;
         }
+    }
+
+    return ret;
+}
+
+/* Test encode and decode of settings frame
+ */
+
+int h3zero_settings_encode_test(const uint8_t* ref, size_t ref_length, h3zero_settings_t* test)
+{
+    int ret = -1;
+    uint8_t buffer[1024];
+    uint8_t* bytes = buffer;
+    uint8_t* bytes_max = buffer + sizeof(buffer);
+
+    if ((bytes = h3zero_settings_encode(bytes, bytes_max, test)) != NULL &&
+        (bytes - buffer) == ref_length &&
+        memcmp(buffer, ref, ref_length) == 0) {
+        ret = 0;
+    }
+    return ret;
+}
+
+int h3zero_settings_decode_test(const uint8_t* bytes, size_t length, h3zero_settings_t* ref, int check_length)
+{
+    int ret = 0;
+    h3zero_settings_t decoded;
+    const uint8_t * bytes_max = bytes + length;
+
+    bytes = h3zero_settings_decode(bytes, bytes_max, &decoded);
+    if (bytes == NULL) {
+        ret = -1;
+    }
+    else if (check_length && bytes != bytes_max) {
+        ret = -1;
+    }
+    else if (decoded.table_size != ref->table_size) {
+        ret = -1;
+    }
+    else if (decoded.blocked_streams != ref->blocked_streams) {
+        ret = -1;
+    }
+    else if (decoded.enable_connect_protocol != ref->enable_connect_protocol){
+        ret = -1;
+    }
+    else if (decoded.h3_datagram != ref->h3_datagram){
+        ret = -1;
+    }
+    else if (decoded.is_web_transport_enabled != ref->is_web_transport_enabled){
+        ret = -1;
+    }
+    else if (decoded.webtransport_max_sessions != ref->webtransport_max_sessions) {
+        ret = -1;
+    }
+    return ret;
+}
+
+h3zero_settings_t default_setting_expected = {
+    0, 0, 0, 1, 1, 1, 1
+};
+
+int h3zero_settings_test()
+{
+    int ret = h3zero_settings_decode_test(h3zero_default_setting_frame + 1, h3zero_default_setting_frame_size - 1, &default_setting_expected, 1);
+
+    if (ret == 0) {
+        ret = h3zero_settings_encode_test(h3zero_default_setting_frame + 1, h3zero_default_setting_frame_size - 1, &default_setting_expected);
     }
 
     return ret;

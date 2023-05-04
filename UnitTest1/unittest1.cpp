@@ -446,6 +446,13 @@ namespace UnitTest1
             Assert::AreEqual(ret, 0);
         }
 
+        TEST_METHOD(datagram_rt_skip)
+        {
+            int ret = datagram_rt_skip_test();
+
+            Assert::AreEqual(ret, 0);
+        }
+
         TEST_METHOD(datagram_loss)
         {
             int ret = datagram_loss_test();
@@ -2107,6 +2114,12 @@ namespace UnitTest1
             Assert::AreEqual(ret, 0);
         }
 
+        TEST_METHOD(h3zero_uri) {
+            int ret = h3zero_uri_test();
+
+            Assert::AreEqual(ret, 0);
+        }
+
         TEST_METHOD(h3zero_null_sni) {
             int ret = h3zero_null_sni_test();
 
@@ -2251,6 +2264,12 @@ namespace UnitTest1
             Assert::AreEqual(ret, 0);
         }
 
+        TEST_METHOD(h3zero_settings) {
+            int ret = h3zero_settings_test();
+
+            Assert::AreEqual(ret, 0);
+        }
+
         TEST_METHOD(http_drop) {
             int ret = http_drop_test();
 
@@ -2259,6 +2278,48 @@ namespace UnitTest1
 
         TEST_METHOD(grease_quic_bit) {
             int ret = grease_quic_bit_test();
+
+            Assert::AreEqual(ret, 0);
+        }
+
+        TEST_METHOD(picowt_baton_basic) {
+            int ret = picowt_baton_basic_test();
+
+            Assert::AreEqual(ret, 0);
+        }
+
+        TEST_METHOD(picowt_baton_error) {
+            int ret = picowt_baton_error_test();
+
+            Assert::AreEqual(ret, 0);
+        }
+
+        TEST_METHOD(picowt_baton_long) {
+            int ret = picowt_baton_long_test();
+
+            Assert::AreEqual(ret, 0);
+        }
+
+        TEST_METHOD(picowt_baton_multi) {
+            int ret = picowt_baton_multi_test();
+
+            Assert::AreEqual(ret, 0);
+        }
+
+        TEST_METHOD(picowt_baton_random) {
+            int ret = picowt_baton_random_test();
+
+            Assert::AreEqual(ret, 0);
+        }
+
+        TEST_METHOD(picowt_baton_uri) {
+            int ret = picowt_baton_uri_test();
+
+            Assert::AreEqual(ret, 0);
+        }
+
+        TEST_METHOD(picowt_baton_wrong) {
+            int ret = picowt_baton_wrong_test();
 
             Assert::AreEqual(ret, 0);
         }
